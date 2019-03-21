@@ -5,7 +5,7 @@ var chai = require('chai')
 describe('grant.device_code', function() {
   
   describe('module', function() {
-    var mod = deviceCode(function(){});
+    var mod = deviceCode(function(){}, function(){});
     
     it('should be named device_code', function() {
       expect(mod.name).to.equal('device_code');
@@ -22,6 +22,13 @@ describe('grant.device_code', function() {
       deviceCode();
     }).to.throw(TypeError, 'oauth2orize.device.activate grant requires an activate callback');
   });
+  
+  it('should throw if constructed without a deny callback', function() {
+    function activate() {};
+    expect(function() {
+      deviceCode(activate);
+    }).to.throw(TypeError, 'oauth2orize.device.activate grant requires a deny callback');
+  });
 
   describe('decision processing', function() {
     
@@ -36,8 +43,12 @@ describe('grant.device_code', function() {
           
           return done(null);
         }
+
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -83,8 +94,12 @@ describe('grant.device_code', function() {
           
           return done(null);
         }
+
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -131,8 +146,12 @@ describe('grant.device_code', function() {
           
           return done(null);
         }
+
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -180,8 +199,12 @@ describe('grant.device_code', function() {
           
           return done(null);
         }
+
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -228,7 +251,11 @@ describe('grant.device_code', function() {
           return done(null);
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -268,49 +295,7 @@ describe('grant.device_code', function() {
         expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
       });
     }); // activating device code with complete callback
-    
-    describe('authorization denied by user', function() {
-      var response;
       
-      before(function(done) {
-        function activate(client, deviceCode, user, done) {
-          return done(null);
-        }
-        
-        chai.oauth2orize.grant(deviceCode(activate))
-          .txn(function(txn) {
-            txn.client = { id: '1', name: 'OAuth Client' };
-            txn.req = {
-              scope: [ 'profile', 'tv' ]
-            };
-            txn.locals = {
-              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
-            };
-            txn.user = { id: '501', name: 'John Doe' };
-            txn.res = { allow: false };
-          })
-          .res(function(res) {
-            res.locals = {};
-            res.render = function(view) {
-              this.view = view;
-              this.end();
-            }
-          })
-          .end(function(res) {
-            response = res;
-            done();
-          })
-          .decide();
-      });
-      
-      it('should render', function() {
-        expect(response.statusCode).to.equal(200);
-        expect(response.view).to.equal('oauth2/device/denied');
-        expect(response.locals.user).to.deep.equal({ id: '501', name: 'John Doe' });
-        expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
-      });
-    }); // authorization denied by user
-    
     describe('encountering an error while activating device code', function() {
       var response;
       
@@ -319,7 +304,11 @@ describe('grant.device_code', function() {
           return done(new Error('something went wrong'));
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -344,7 +333,7 @@ describe('grant.device_code', function() {
       });
     }); // encountering an error while activating device code
 
-    describe('encountering an exception while issuing cross domain code', function() {
+    describe('encountering an exception while activating device code', function() {
       var err;
       
       before(function(done) {
@@ -352,7 +341,11 @@ describe('grant.device_code', function() {
           throw new Error('something went horribly wrong');
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: 'cTHROW', name: 'Example' };
             txn.req = {
@@ -376,7 +369,7 @@ describe('grant.device_code', function() {
         expect(err).to.be.an.instanceOf(Error);
         expect(err.message).to.equal('something went horribly wrong');
       });
-    }); // encountering an exception while issuing cross domain code
+    }); // encountering an exception while activating device code
   
     describe('encountering an error while completing transaction', function() {
       var response;
@@ -386,7 +379,11 @@ describe('grant.device_code', function() {
           return done(null);
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -417,6 +414,10 @@ describe('grant.device_code', function() {
       function activate(client, deviceCode, user, done) {
         return done(null);
       }
+
+      function deny(client, deviceCode, user, done) {
+        return done(null);
+      }
       
       var otherResponseMode = function(txn, res, params) {
         expect(txn.locals.deviceCode).to.equal('GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8');
@@ -429,7 +430,7 @@ describe('grant.device_code', function() {
         var response;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -467,7 +468,7 @@ describe('grant.device_code', function() {
         var response;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -505,7 +506,7 @@ describe('grant.device_code', function() {
         var response;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -543,7 +544,7 @@ describe('grant.device_code', function() {
         var response, err;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -582,6 +583,290 @@ describe('grant.device_code', function() {
       
     }); // with response mode
   
+    describe('authorization denied by user, denying device code', function() {
+      var response;
+      
+      before(function(done) {
+        function activate(client, deviceCode, user, done) {
+          return done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, done) {
+          done(null);
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: '1', name: 'OAuth Client' };
+            txn.req = {
+              scope: [ 'profile', 'tv' ]
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
+            };
+            txn.user = { id: '501', name: 'John Doe' };
+            txn.res = { allow: false };
+          })
+          .res(function(res) {
+            res.locals = {};
+            res.render = function(view) {
+              this.view = view;
+              this.end();
+            }
+          })
+          .end(function(res) {
+            response = res;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should render', function() {
+        expect(response.statusCode).to.equal(200);
+        expect(response.view).to.equal('oauth2/device/denied');
+        expect(response.locals.user).to.deep.equal({ id: '501', name: 'John Doe' });
+        expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
+      });
+
+      describe('deny callback', function() {
+        it('should be called', function(){
+
+        });
+      }); // deny callback
+    }); // authorization denied by user
+
+    describe('authorization denied by user, denying device code based on response', function() {
+      var response;
+      
+      before(function(done) {
+        function activate(client, deviceCode, user, ares, done) {          
+          done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, ares, done) {
+          if (client.id !== '1') { return done(new Error('incorrect client argument')); }
+          if (deviceCode !== 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8') { return done(new Error('incorrect deviceCode argument')); }
+          if (user.id !== '501') { return done(new Error('incorrect user argument')); }
+          if (ares.allow !== false) { return done(new Error('incorrect ares argument')); }
+
+          return done(null);
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: '1', name: 'OAuth Client' };
+            txn.req = {
+              scope: [ 'profile', 'tv' ]
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
+            };
+            txn.user = { id: '501', name: 'John Doe' };
+            txn.res = { allow: false };
+          })
+          .res(function(res) {
+            res.locals = {};
+            res.render = function(view) {
+              this.view = view;
+              this.end();
+            }
+          })
+          .end(function(res) {
+            response = res;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should render', function() {
+        expect(response.statusCode).to.equal(200);
+        expect(response.view).to.equal('oauth2/device/denied');
+        expect(response.locals.user).to.deep.equal({ id: '501', name: 'John Doe' });
+        expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
+      });
+    }); // authorization denied by user, denying device code based on response
+    
+    describe('authorization denied by user, denying device code based on response and request', function() {
+      var response;
+      
+      before(function(done) {
+        function activate(client, deviceCode, user, ares, areq, done) {
+          done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, ares, areq, done) {
+          if (client.id !== '1') { return done(new Error('incorrect client argument')); }
+          if (deviceCode !== 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8') { return done(new Error('incorrect deviceCode argument')); }
+          if (user.id !== '501') { return done(new Error('incorrect user argument')); }
+          if (ares.allow !== false) { return done(new Error('incorrect ares argument')); }
+          if (areq.scope[0] !== 'profile') { return done(new Error('incorrect areq argument')); }
+          
+          return done(null);
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: '1', name: 'OAuth Client' };
+            txn.req = {
+              scope: [ 'profile', 'tv' ]
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
+            };
+            txn.user = { id: '501', name: 'John Doe' };
+            txn.res = { allow: false };
+          })
+          .res(function(res) {
+            res.locals = {};
+            res.render = function(view) {
+              this.view = view;
+              this.end();
+            }
+          })
+          .end(function(res) {
+            response = res;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should render', function() {
+        expect(response.statusCode).to.equal(200);
+        expect(response.view).to.equal('oauth2/device/denied');
+        expect(response.locals.user).to.deep.equal({ id: '501', name: 'John Doe' });
+        expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
+      });
+    }); // authorization denied by user, denying device code based on response and request
+    
+    describe('authorization denied by user, denying device code based on response, request, and locals', function() {
+      var response;
+      
+      before(function(done) {
+        function activate(client, deviceCode, user, ares, areq, locals, done) {
+          done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, ares, areq, locals, done) {
+          if (client.id !== '1') { return done(new Error('incorrect client argument')); }
+          if (deviceCode !== 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8') { return done(new Error('incorrect deviceCode argument')); }
+          if (user.id !== '501') { return done(new Error('incorrect user argument')); }
+          if (ares.allow !== false) { return done(new Error('incorrect ares argument')); }
+          if (areq.scope[0] !== 'profile') { return done(new Error('incorrect areq argument')); }
+          if (locals.bar !== 'baz') { return done(new Error('incorrect locals argument')); }
+          
+          return done(null);
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: '1', name: 'OAuth Client' };
+            txn.req = {
+              scope: [ 'profile', 'tv' ]
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8',
+              bar: 'baz'
+            };
+            txn.user = { id: '501', name: 'John Doe' };
+            txn.res = { allow: false };
+          })
+          .res(function(res) {
+            res.locals = {};
+            res.render = function(view) {
+              this.view = view;
+              this.end();
+            }
+          })
+          .end(function(res) {
+            response = res;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should render', function() {
+        expect(response.statusCode).to.equal(200);
+        expect(response.view).to.equal('oauth2/device/denied');
+        expect(response.locals.user).to.deep.equal({ id: '501', name: 'John Doe' });
+        expect(response.locals.client).to.deep.equal({ id: '1', name: 'OAuth Client' });
+      });
+    }); // authorization denied by user, denying device code based on response, request, and locals
+
+    describe('encountering an error while denying device code', function() {
+      var response;
+      
+      before(function(done) {
+        function activate(client, deviceCode, user, done) {
+          done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, done) {
+          done(new Error('something went wrong'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: '1', name: 'OAuth Client' };
+            txn.req = {
+              scope: [ 'profile', 'tv' ]
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
+            };
+            txn.user = { id: '501', name: 'John Doe' };
+            txn.res = { allow: false };
+          })
+          .next(function(e) {
+            err = e;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should error', function() {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal('something went wrong');
+      });
+    }); // encountering an error while denying device code
+
+    describe('encountering an exception while denying device code', function() {
+      var err;
+      
+      before(function(done) {
+        function activate(deviceCode, done) {
+          done(new Error('activate should not be called'));
+        }
+        
+        function deny(client, deviceCode, user, done) {
+          throw new Error('something went horribly wrong');
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
+          .txn(function(txn) {
+            txn.client = { id: 'cTHROW', name: 'Example' };
+            txn.req = {
+              clientID:   'c123',
+              deviceCode: 'dc123'
+            };
+            txn.locals = {
+              deviceCode: 'GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8'
+            };
+            txn.user = { id: 'u123', name: 'Bob' };
+            txn.res = { allow: false };
+          })
+          .next(function(e) {
+            err = e;
+            done();
+          })
+          .decide();
+      });
+      
+      it('should error', function() {
+        expect(err).to.be.an.instanceOf(Error);
+        expect(err.message).to.equal('something went horribly wrong');
+      });
+    }); // encountering an exception while denying device code
+
   }); // decision processing
 
   describe('error handling', function() {
@@ -594,7 +879,11 @@ describe('grant.device_code', function() {
           return done(null);
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -638,7 +927,11 @@ describe('grant.device_code', function() {
           return done(null);
         }
         
-        chai.oauth2orize.grant(deviceCode(activate))
+        function deny(client, deviceCode, user, done) {
+          done(new Error('deny should not be called'));
+        }
+        
+        chai.oauth2orize.grant(deviceCode(activate, deny))
           .txn(function(txn) {
             txn.client = { id: '1', name: 'OAuth Client' };
             txn.req = {
@@ -678,6 +971,10 @@ describe('grant.device_code', function() {
       function activate(client, deviceCode, user, done) {
         return done(null);
       }
+
+      function deny(client, deviceCode, user, done) {
+        return done(null);
+      }
       
       var otherResponseMode = function(txn, res, params) {
         expect(txn.locals.deviceCode).to.equal('GMMhmHCXhWEzkobqIHGG_EnNYYsAkukHspeYUk9E8');
@@ -690,7 +987,7 @@ describe('grant.device_code', function() {
         var response;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -730,7 +1027,7 @@ describe('grant.device_code', function() {
         var response;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {
@@ -768,7 +1065,7 @@ describe('grant.device_code', function() {
         var response, err;
       
         before(function(done) {
-          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate))
+          chai.oauth2orize.grant(deviceCode({ modes: { other: otherResponseMode } }, activate, deny))
             .txn(function(txn) {
               txn.client = { id: '1', name: 'OAuth Client' };
               txn.req = {

@@ -26,8 +26,8 @@ $ npm install oauth2orize-device-code
 
 #### Specification
 
-This module is implemented based on [OAuth 2.0 Device Flow for Browserless and Input Constrained Devices](https://tools.ietf.org/html/draft-ietf-oauth-device-flow-07),
-draft version 07.  As a draft, the specification remains a work-in-progress and
+This module is implemented based on [OAuth 2.0 Device Flow for Browserless and Input Constrained Devices](https://tools.ietf.org/html/draft-ietf-oauth-device-flow-15),
+draft version 15.  As a draft, the specification remains a work-in-progress and
 is *not* final.  The specification is under discussion within the [OAuth Working Group](https://datatracker.ietf.org/wg/oauth/about/)
 of the [IETF](https://www.ietf.org/).  Implementers are encouraged to track the
 progress of this specification and update implementations as necessary.
